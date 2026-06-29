@@ -25,7 +25,6 @@ var Analyzer = &analysis.Analyzer{
 // Registration declares this analyzer to the yze framework.
 var Registration = goyze.Registration{
 	Name:       "emptyiface",
-	Group:      "go",
 	Categories: []goyze.Category{"modern-go"},
 	URL:        "https://docs.gomatic.dev/yze/go/emptyiface",
 	Analyzer:   Analyzer,

@@ -3,10 +3,11 @@ package main
 import (
 	"testing"
 
-	emptyiface "github.com/gomatic/yze-go-emptyiface"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/analysis"
+
+	emptyiface "github.com/gomatic/yze-emptyiface"
 )
 
 func TestMainRunsTheAnalyzer(t *testing.T) {

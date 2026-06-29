@@ -3,8 +3,9 @@
 package main
 
 import (
-	emptyiface "github.com/gomatic/yze-go-emptyiface"
 	"golang.org/x/tools/go/analysis/singlechecker"
+
+	emptyiface "github.com/gomatic/yze-emptyiface"
 )
 
 // run is the analysis entry point, indirected so the binary's wiring is testable

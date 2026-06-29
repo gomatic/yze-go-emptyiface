@@ -3,9 +3,10 @@ package emptyiface_test
 import (
 	"testing"
 
-	emptyiface "github.com/gomatic/yze-go-emptyiface"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/tools/go/analysis/analysistest"
+
+	emptyiface "github.com/gomatic/yze-emptyiface"
 )
 
 func TestEmptyInterfaceIsReportedAndFixed(t *testing.T) {
@@ -14,6 +15,6 @@ func TestEmptyInterfaceIsReportedAndFixed(t *testing.T) {
 
 func TestRegistrationIsWellFormed(t *testing.T) {
 	assert.NoError(t, emptyiface.Registration.Validate())
-	assert.Equal(t, "yze/go/emptyiface", emptyiface.Registration.RuleID())
+	assert.Equal(t, "yze/emptyiface", emptyiface.Registration.RuleID())
 	assert.Same(t, emptyiface.Analyzer, emptyiface.Registration.Analyzer)
 }
