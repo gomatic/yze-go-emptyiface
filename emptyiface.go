@@ -26,7 +26,7 @@ var Analyzer = &analysis.Analyzer{
 var Registration = goyze.Registration{
 	Name:       "emptyiface",
 	Categories: []goyze.Category{"modern-go"},
-	URL:        "https://docs.gomatic.dev/yze/go/emptyiface",
+	URL:        "https://docs.gomatic.dev/yze/emptyiface",
 	Analyzer:   Analyzer,
 }
 

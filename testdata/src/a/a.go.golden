@@ -10,3 +10,23 @@ func accept(x any) { _ = x } // want `prefer any`
 type Real interface {
 	Do()
 }
+
+// Already uses any directly and must never be flagged (regression guard).
+type Already any
+
+// acceptAny uses any directly and must never be flagged (regression guard).
+func acceptAny(x any) { _ = x }
+
+// Constraint is a non-empty type constraint (~int) and must not be flagged.
+type Constraint interface{ ~int }
+
+// identity carries an empty type constraint that must be flagged and fixed to any.
+func identity[T any](v T) T { return v } // want `prefer any`
+
+// Bag stores an empty interface field that must be flagged.
+type Bag struct {
+	v any // want `prefer any`
+}
+
+// registry maps to the empty interface and must be flagged.
+var registry = map[string]any{} // want `prefer any`

@@ -1,4 +1,4 @@
-// Command yze-go-emptyiface runs the emptyiface analyzer as a standalone
+// Command yze-emptyiface runs the emptyiface analyzer as a standalone
 // go/analysis checker (text, -json, and -fix output, and as a `go vet -vettool`).
 package main
 
