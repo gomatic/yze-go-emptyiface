@@ -1,4 +1,4 @@
-module github.com/gomatic/yze-emptyiface
+module github.com/gomatic/yze-go-emptyiface
 
 go 1.26.4
 

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/analysis"
 
-	emptyiface "github.com/gomatic/yze-emptyiface"
+	emptyiface "github.com/gomatic/yze-go-emptyiface"
 )
 
 func TestMainRunsTheAnalyzer(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	emptyiface "github.com/gomatic/yze-emptyiface"
+	emptyiface "github.com/gomatic/yze-go-emptyiface"
 )
 
 func TestEmptyInterfaceIsReportedAndFixed(t *testing.T) {
