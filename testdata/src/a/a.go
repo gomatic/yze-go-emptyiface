@@ -30,3 +30,17 @@ type Bag struct {
 
 // registry maps to the empty interface and must be flagged.
 var registry = map[string]interface{}{} // want `prefer any`
+
+// shadowed declares a local alias named any, so rewriting interface{} to any
+// would change its meaning; the diagnostic still fires but no fix is offered.
+func shadowed() {
+	type any = int
+	var x interface{} // want `prefer any`
+	_ = x
+}
+
+// commented carries a comment inside the braces that the rewrite would destroy;
+// the diagnostic still fires but no fix is offered.
+var commented interface { // want `prefer any`
+	// sacred note that the fix must not destroy
+}
