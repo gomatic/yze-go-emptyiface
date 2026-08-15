@@ -1,0 +1,17 @@
+package deep
+
+// This file varies the file CLASS. The rule is about how a type is spelt and no
+// test idiom needs the long spelling, so the verdict in a _test.go is the same
+// as in a source file — and a scope keyed on the class fails a case here.
+
+import "testing"
+
+// probe is the empty interface written in a test file.
+type probe any // want `prefer any to the empty interface\{\}`
+
+func TestHeldTakesAnything(t *testing.T) {
+	var p probe = Held{}
+	if p == nil {
+		t.Fatal("a struct value is not nil")
+	}
+}

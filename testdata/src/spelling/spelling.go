@@ -1,0 +1,29 @@
+// Package spelling holds every spelling of the empty interface the rule reports
+// and every neighbouring shape it must not, so a matcher narrowed to one
+// spelling fails a case here rather than a coverage number.
+package spelling
+
+// Short is the empty interface in its short spelling.
+type Short interface{} // want `prefer any to the empty interface\{\}`
+
+// Long is the same type written with an embedded any: one extra token, which a
+// matcher counting the elements between the braces does not report.
+type Long interface{ any } // want `prefer any to the empty interface\{\}`
+
+// Embedded embeds a declared empty interface and is therefore empty itself.
+type Embedded interface{ Short } // want `prefer any to the empty interface\{\}`
+
+// Term carries a type term, so it constrains and is not the empty interface.
+type Term interface{ ~int }
+
+// Comparable carries the comparable constraint and is not the empty interface.
+type Comparable interface{ comparable }
+
+// Method carries a method and is not the empty interface.
+type Method interface{ Do() }
+
+// Mixed embeds any beside comparable, which constrains, so it is not empty.
+type Mixed interface {
+	any
+	comparable
+}

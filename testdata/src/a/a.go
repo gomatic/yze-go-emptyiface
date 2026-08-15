@@ -44,3 +44,12 @@ func shadowed() {
 var commented interface { // want `prefer any`
 	// sacred note that the fix must not destroy
 }
+
+// multiSpelt is the empty interface written across several lines with more than
+// one embedded element. It is reported like any other spelling; no fix is
+// offered here for the same reason as commented below — the want comment sits
+// inside the braces and the rewrite would destroy it.
+type multiSpelt interface { // want `prefer any`
+	any
+	any
+}
