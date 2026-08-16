@@ -7,3 +7,10 @@ package main
 func sink(v interface{}) { _ = v } // want `prefer any to the empty interface\{\}`
 
 func main() { sink(1) }
+
+// mainMarker is an empty interface spelt in place, so it is reported.
+type mainMarker interface{} // want `prefer any to the empty interface\{\}`
+
+// composedInMain embeds that name under a main package clause, and is not
+// reported: a widening keyed on the clause fails here.
+type composedInMain interface{ mainMarker }

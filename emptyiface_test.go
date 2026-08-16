@@ -98,6 +98,7 @@ func TestReportedExtentIsTheWholeInterfaceType(t *testing.T) {
 	assert.Equal(t, []coveredText{
 		"interface{}",
 		"interface{ any }",
+		"interface{ (any) }",
 	}, covered, "the reported extent is the whole interface type, in every spelling")
 }
 
@@ -154,13 +155,13 @@ func TestTheFixIsOfferedInEveryFixtureFileThatEarnsIt(t *testing.T) {
 			"a.go": {reported: 8, offered: 5},
 			"b.go": {reported: 1, offered: 1},
 		}},
-		{pattern: "spelling", want: map[string]fixOffers{"spelling.go": {reported: 2, offered: 2}}},
+		{pattern: "spelling", want: map[string]fixOffers{"spelling.go": {reported: 3, offered: 3}}},
 		{pattern: "embedded", want: map[string]fixOffers{"embedded.go": {reported: 3, offered: 3}}},
 		{pattern: "nested/deep", want: map[string]fixOffers{
-			"deep.go":      {reported: 2, offered: 2},
+			"deep.go":      {reported: 3, offered: 3},
 			"deep_test.go": {reported: 1, offered: 1},
 		}},
-		{pattern: "mainpkg", want: map[string]fixOffers{"main.go": {reported: 1, offered: 1}}},
+		{pattern: "mainpkg", want: map[string]fixOffers{"main.go": {reported: 2, offered: 2}}},
 	} {
 		t.Run(string(tc.pattern), func(t *testing.T) {
 			assert.Equal(t, tc.want, offersByFile(t, tc.pattern))

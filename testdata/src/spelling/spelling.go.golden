@@ -29,3 +29,9 @@ type Mixed interface {
 	any
 	comparable
 }
+
+// Parenthesised wraps the predeclared any in the parentheses the grammar allows
+// and gofmt preserves. It is the same type and the same spelling, one token pair
+// heavier, so it is reported: a rule a pair of brackets walks out of is the very
+// escape this one was rebuilt to close.
+type Parenthesised any // want `prefer any to the empty interface\{\}`

@@ -171,6 +171,9 @@ func TestAnEmbeddedDeclaredNameIsNotASpellingOfTheEmptyInterface(t *testing.T) {
 		{"a name declared in the same package", "package p\n\ntype T interface{ Marker }\n", false},
 		{"a name beside the predeclared any", "package p\n\ntype T interface {\n\tany\n\tMarker\n}\n", false},
 		{"a literal empty interface embedded whole", "package p\n\ntype T interface{ interface{} }\n", false},
+		{"the predeclared any in parentheses", "package p\n\ntype T interface{ (any) }\n", true},
+		{"the predeclared any in two pairs", "package p\n\ntype T interface{ ((any)) }\n", true},
+		{"a declared name in parentheses", "package p\n\ntype T interface{ (Marker) }\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -197,6 +200,46 @@ func TestTheVerdictDoesNotDependOnWhatAnEmbeddedNameResolvesTo(t *testing.T) {
 
 	carrying, its := checkedAt(t, "go1.26", "package p\n\ntype plat interface{ Do() }\n", judged)
 	assert.False(t, isEmptyInterface(carrying, its[1]), "the platform where the name carries a method")
+}
+
+// TestTheVerdictDoesNotDependOnWhereAnyItselfIsDeclared is the second half of the
+// same two-platform pin, and it is the one an element test keyed on RESOLUTION
+// fails. any is an ordinary predeclared identifier, so a package may shadow it —
+// and a package that shadows it in a file selected by //go:build makes the same
+// byte-identical, untagged interface{ any } resolve to the universe object on one
+// platform and to the package's own on the other. The verdict is taken from the
+// SPELLING for exactly this reason: the file's own tokens are what the rule is
+// about, and they do not move.
+func TestTheVerdictDoesNotDependOnWhereAnyItselfIsDeclared(t *testing.T) {
+	t.Parallel()
+	const judged = "package p\n\ntype Judged interface{ any }\n"
+
+	universe, its := checkedAt(t, "go1.26", judged, "package p\n\nvar unshadowed interface{}\n")
+	assert.True(t, isEmptyInterface(universe, its[0]), "the platform where any is the predeclared one")
+
+	shadowed, its := checkedAt(t, "go1.26", judged, "package p\n\ntype any = interface{}\n")
+	assert.True(t, isEmptyInterface(shadowed, its[0]), "the platform where the package declares any itself")
+}
+
+// TestTheRewriteIsOfferedWhereWritingAnyMeansTheEmptyInterface names what the
+// first fix guard is actually asking. It is not "is this the universe object" —
+// it is "does the name any, written here, still denote the empty interface", and
+// an alias to interface{} answers yes while an alias to int answers no. Asking
+// the narrower question withholds the remedy from a package that spells the empty
+// interface with its own name for it, and withholds it on one platform only when
+// that declaration sits behind a build constraint.
+func TestTheRewriteIsOfferedWhereWritingAnyMeansTheEmptyInterface(t *testing.T) {
+	t.Parallel()
+	const judged = "package p\n\ntype Judged interface{}\n"
+
+	aliased, its := checkedAt(t, "go1.26", judged, "package p\n\ntype any = interface{}\n")
+	assert.Len(t, fixes(aliased, its[0]), 1, "writing any here still denotes the empty interface")
+
+	rebound, its := checkedAt(t, "go1.26", judged, "package p\n\ntype any = int\n\ntype sink interface{ Do() }\n")
+	assert.Nil(t, fixes(rebound, its[0]), "writing any here denotes int, and the rewrite would change the type")
+
+	named, its := checkedAt(t, "go1.26", judged, "package p\n\ntype Marker interface{ Do() }\ntype any = Marker\n")
+	assert.Nil(t, fixes(named, its[0]), "writing any here denotes a named type, which is not the same type")
 }
 
 // TestAnUntypedInterfaceIsNotReported names what the matcher does when the type

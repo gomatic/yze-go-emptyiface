@@ -15,3 +15,7 @@ func TestHeldTakesAnything(t *testing.T) {
 		t.Fatal("a struct value is not nil")
 	}
 }
+
+// composedInATest is the same withdrawal in a _test.go, so a widening keyed on
+// the file class fails a case rather than a coverage number.
+type composedInATest interface{ probeMarker }
