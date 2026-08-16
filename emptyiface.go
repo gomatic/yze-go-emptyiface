@@ -1,13 +1,29 @@
 // Package emptyiface provides a go/analysis analyzer enforcing the gomatic Go
 // standard that the empty interface is written as any, not interface{}.
 //
-// The verdict is taken from the TYPE and never from the syntax. interface{} and
-// interface{ any } denote the same type, so both are reported: a rule keyed on
-// how many elements the braces hold reports the first and lets the second walk
-// out of the standard for one extra token. An interface carrying a method, a
-// type term or a non-empty embedded constraint — interface{ Do() },
-// interface{ ~int }, interface{ comparable } — is not the empty interface and is
-// never reported.
+// The verdict is taken from the TYPE and never from the token count, and only
+// where the judged file's own tokens carry it: an interface is reported when
+// go/types calls it empty AND every element between its braces is the
+// predeclared any. interface{} and interface{ any } denote the same type and
+// both are reported — a rule keyed on how many elements the braces hold reports
+// the first and lets the second walk out of the standard for one extra token —
+// while an interface carrying a method, a type term or a non-empty embedded
+// constraint — interface{ Do() }, interface{ ~int }, interface{ comparable } —
+// is not the empty interface and is never reported.
+//
+// An interface whose elements are DECLARED names — interface{ Marker },
+// interface{ pkg.Marker } — is outside the rule even where the type it denotes
+// is empty today, and the withdrawal is a requirement rather than a taste. Such
+// an interface is not a SPELLING of the empty interface: it is a composition of
+// named parts that happens to be empty, so the rule's reason does not reach it.
+// The rewrite would delete the name, which across packages deletes the last use
+// of an import and leaves a file that does not compile — the framework applies
+// fixes through gofmt, which removes no imports. And the verdict would not be a
+// function of the judged file at all: a name declared once per GOOS behind a
+// //go:build constraint resolves to an empty interface on one platform and a
+// non-empty one on another, so one untagged file would be reported on one
+// machine and silent on the next, and the remedy taken on the first would break
+// the build on the second.
 //
 // It offers a mechanical fix, suppressed in the three cases where the rewrite
 // would not be safe: the name any at the reported position does not resolve to
@@ -16,10 +32,14 @@
 // file's effective language version is below go1.18, where any is not yet
 // predeclared and the rewritten file does not compile. A version the loader
 // leaves unstated is not evidence the rewrite is illegal, so the fix stands.
+// Three is the whole list because of what is reported rather than because of
+// what is guarded: the span the rewrite replaces holds nothing but braces and
+// the predeclared any, so it can carry away no declaration, no import and no
+// meaning the file had. A fourth case would be a shape reported in error.
 //
-// The diagnostic is emitted for every empty interface in every file, test files
-// included: the rule is about how a type is spelt, and no test idiom needs the
-// long spelling.
+// The diagnostic is emitted for every empty interface spelt in place, in every
+// file, test files included: the rule is about how a type is spelt, and no test
+// idiom needs the long spelling.
 package emptyiface
 
 import (
@@ -76,13 +96,39 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// isEmptyInterface reports whether the interface type expression denotes the
-// empty interface, whatever spelling carries it. go/types answers this and the
-// syntax does not: interface{ any } has one element and is the empty interface,
-// while interface{ comparable } has one element and is not.
+// isEmptyInterface reports whether the interface type expression is the empty
+// interface SPELT OUT in place. go/types answers the first half and the syntax
+// does not: interface{ any } has one element and is the empty interface, while
+// interface{ comparable } has one element and is not. The syntax answers the
+// second half and go/types does not: interface{ Marker } is the same type as
+// interface{} and is a composition of named parts rather than a spelling of it.
 func isEmptyInterface(pass *analysis.Pass, it *ast.InterfaceType) bool {
 	iface, ok := pass.TypesInfo.TypeOf(it).(*types.Interface)
-	return ok && iface.Empty()
+	return ok && iface.Empty() && isSpeltInPlace(pass, it)
+}
+
+// isSpeltInPlace reports whether the interface says it is empty in its own
+// tokens: every element between the braces is the predeclared any, of which the
+// empty element list is the degenerate case. An element naming a declaration —
+// here, in another file of the package, or in another package — carries the
+// emptiness somewhere else, where a build tag may move it and where the rewrite
+// deleting the name may take an import with it.
+func isSpeltInPlace(pass *analysis.Pass, it *ast.InterfaceType) bool {
+	for _, element := range it.Methods.List {
+		if !isPredeclaredAny(pass, element.Type) {
+			return false
+		}
+	}
+	return true
+}
+
+// isPredeclaredAny reports whether the interface element is the identifier any
+// resolved to its universe-scope declaration. Object identity is the test to
+// make: every empty interface has the same TYPE as any, so a comparison of types
+// would readmit the declared names this rule withdraws from.
+func isPredeclaredAny(pass *analysis.Pass, element ast.Expr) bool {
+	name, ok := element.(*ast.Ident)
+	return ok && pass.TypesInfo.Uses[name] == types.Universe.Lookup(replacement)
 }
 
 // report emits the diagnostic for an empty interface, with the any-rewrite fix

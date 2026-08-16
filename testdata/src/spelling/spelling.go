@@ -10,8 +10,10 @@ type Short interface{} // want `prefer any to the empty interface\{\}`
 // matcher counting the elements between the braces does not report.
 type Long interface{ any } // want `prefer any to the empty interface\{\}`
 
-// Embedded embeds a declared empty interface and is therefore empty itself.
-type Embedded interface{ Short } // want `prefer any to the empty interface\{\}`
+// Embedded embeds a declared empty interface. It denotes the same type as Short
+// and is not a SPELLING of it: the emptiness is carried by a declaration this
+// file does not hold, which a build tag can move and the rewrite would delete.
+type Embedded interface{ Short }
 
 // Term carries a type term, so it constrains and is not the empty interface.
 type Term interface{ ~int }

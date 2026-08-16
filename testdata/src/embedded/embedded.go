@@ -1,0 +1,38 @@
+// Package embedded holds the interfaces whose emptiness is decided by a DECLARED
+// NAME rather than by the judged file's own tokens. Every type below denotes the
+// empty interface, so a matcher that asks go/types alone reports all of them and
+// offers to rewrite each one to any — which deletes the name, and across packages
+// deletes the last use of an import, leaving a file that does not compile.
+package embedded
+
+import "nested/deep"
+
+// Marker holds nothing between its braces, so it is the empty interface spelt in
+// place and is reported like every other spelling of it.
+type Marker interface{} // want `prefer any to the empty interface\{\}`
+
+// SameFile embeds a name this package declares. It denotes the empty interface
+// and is not a spelling of it, so it is not reported.
+type SameFile interface{ Marker }
+
+// CrossPackage embeds a name another package declares. This is the shape whose
+// rewrite deletes the import with the name, leaving a file that does not compile
+// under a framework that applies edits through gofmt and removes no imports.
+type CrossPackage interface{ deep.Marker }
+
+// Literal embeds a whole interface literal. The inner literal is the empty
+// interface spelt in place and is reported; the outer composes rather than
+// spells, so exactly one diagnostic sits on this line. Rewriting the inner leaves
+// interface{ any }, which the next round reports and rewrites to any — every
+// round of which compiles, which is the property the withdrawal buys.
+type Literal interface{ interface{} } // want `prefer any to the empty interface\{\}`
+
+// Alias names the empty interface through an alias declaration. The declaration
+// itself spells the interface in place and is reported; embedding the NAME is
+// still a name, resolving to a declaration this file need not hold, so an element
+// test comparing TYPES rather than the resolved OBJECT would readmit it — every
+// empty interface has the same type as any, and only the object differs.
+type Alias = interface{} // want `prefer any to the empty interface\{\}`
+
+// AliasEmbedded embeds that alias and is not reported.
+type AliasEmbedded interface{ Alias }

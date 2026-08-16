@@ -1,7 +1,9 @@
 package emptyiface_test
 
 import (
+	"go/token"
 	"os"
+	"path/filepath"
 	"testing"
 
 	goyze "github.com/gomatic/go-yze"
@@ -21,7 +23,7 @@ type packagePattern string
 // dimensions a corpus of one directory holds constant — the file PATH (nested),
 // the file CLASS (a _test.go inside nested), and the PACKAGE CLAUSE (mainpkg) —
 // so a disjunct keyed on any of them fails a case rather than a coverage number.
-var fixturePackages = []packagePattern{"a", "spelling", "nested/deep", "mainpkg"}
+var fixturePackages = []packagePattern{"a", "spelling", "embedded", "nested/deep", "mainpkg"}
 
 // patterns renders the fixture packages as the driver's argument list.
 func patterns() []string {
@@ -96,8 +98,74 @@ func TestReportedExtentIsTheWholeInterfaceType(t *testing.T) {
 	assert.Equal(t, []coveredText{
 		"interface{}",
 		"interface{ any }",
-		"interface{ Short }",
 	}, covered, "the reported extent is the whole interface type, in every spelling")
+}
+
+// fixOffers is one fixture file's report, counted the way the doc comment's
+// promise is written: how many interfaces were reported in it, and how many of
+// those came with the mechanical rewrite.
+type fixOffers struct {
+	reported int
+	offered  int
+}
+
+// offersByFile runs the analyzer over one fixture package and counts, per file,
+// the reported interfaces and the fixes offered for them. It reads
+// Diagnostic.SuggestedFixes directly because the golden files cannot see a fix
+// that DISAPPEARS: RunWithSuggestedFixes builds its filename set from the files
+// carrying at least one fix edit and reads a golden only for those (x/tools
+// v0.48.0 analysistest.go:185-240), so a suppression keyed on a file's path, its
+// class or its package clause silences the remedy in every file it touches and
+// leaves every golden unread.
+func offersByFile(t *testing.T, pattern packagePattern) map[string]fixOffers {
+	t.Helper()
+	counted := make(map[string]fixOffers)
+	seen := make(map[token.Pos]bool)
+	for _, result := range analysistest.Run(t, analysistest.TestData(), emptyiface.Analyzer, string(pattern)) {
+		for _, diag := range result.Diagnostics {
+			if seen[diag.Pos] {
+				continue
+			}
+			seen[diag.Pos] = true
+			require.LessOrEqual(t, len(diag.SuggestedFixes), 1,
+				"one rewrite per diagnostic, so a second one cannot make up a file's count for a missing first")
+			name := filepath.Base(result.Pass.Fset.File(diag.Pos).Name())
+			offers := counted[name]
+			offers.reported++
+			offers.offered += len(diag.SuggestedFixes)
+			counted[name] = offers
+		}
+	}
+	return counted
+}
+
+// TestTheFixIsOfferedInEveryFixtureFileThatEarnsIt pins the remedy per FILE, which
+// is the dimension a fix suppression is keyed on and the one no golden can see.
+// The counts are read from the fixtures' own declarations: every reported
+// interface carries the rewrite except the three in a.go the doc comment names —
+// shadowed, commented and multiSpelt, whose want comment sits inside the braces —
+// and the two shapes the goldens then pin individually.
+func TestTheFixIsOfferedInEveryFixtureFileThatEarnsIt(t *testing.T) {
+	for _, tc := range []struct {
+		want    map[string]fixOffers
+		pattern packagePattern
+	}{
+		{pattern: "a", want: map[string]fixOffers{
+			"a.go": {reported: 8, offered: 5},
+			"b.go": {reported: 1, offered: 1},
+		}},
+		{pattern: "spelling", want: map[string]fixOffers{"spelling.go": {reported: 2, offered: 2}}},
+		{pattern: "embedded", want: map[string]fixOffers{"embedded.go": {reported: 3, offered: 3}}},
+		{pattern: "nested/deep", want: map[string]fixOffers{
+			"deep.go":      {reported: 2, offered: 2},
+			"deep_test.go": {reported: 1, offered: 1},
+		}},
+		{pattern: "mainpkg", want: map[string]fixOffers{"main.go": {reported: 1, offered: 1}}},
+	} {
+		t.Run(string(tc.pattern), func(t *testing.T) {
+			assert.Equal(t, tc.want, offersByFile(t, tc.pattern))
+		})
+	}
 }
 
 // TestRegistrationIsWellFormed pins every field of the Registration, not only the

@@ -7,3 +7,8 @@ package deep
 type Held struct {
 	v any // want `prefer any to the empty interface\{\}`
 }
+
+// Marker is the empty interface this package exports, so a sibling fixture can
+// embed it across a package boundary — the shape whose rewrite would delete the
+// import that carries it.
+type Marker any // want `prefer any to the empty interface\{\}`

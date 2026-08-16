@@ -151,6 +151,54 @@ func TestTheEmptyInterfaceIsDecidedByTheTypeNotTheTokenCount(t *testing.T) {
 	}
 }
 
+// TestAnEmbeddedDeclaredNameIsNotASpellingOfTheEmptyInterface names the second
+// half of the matcher. Every shape below denotes the empty interface, so
+// go/types calls all of them empty and a matcher asking only that reports all of
+// them — and the rewrite to any then deletes the name, which across packages
+// deletes the last use of an import and leaves a file that does not compile.
+// The rule is about how a type is SPELT, and a composition of named parts is not
+// a spelling of the empty interface.
+func TestAnEmbeddedDeclaredNameIsNotASpellingOfTheEmptyInterface(t *testing.T) {
+	t.Parallel()
+	const declaration = "package p\n\ntype Marker interface{}\n"
+	for _, tc := range []struct {
+		name   string
+		source string
+		spelt  bool
+	}{
+		{"no elements at all", "package p\n\ntype T interface{}\n", true},
+		{"the predeclared any", "package p\n\ntype T interface{ any }\n", true},
+		{"a name declared in the same package", "package p\n\ntype T interface{ Marker }\n", false},
+		{"a name beside the predeclared any", "package p\n\ntype T interface {\n\tany\n\tMarker\n}\n", false},
+		{"a literal empty interface embedded whole", "package p\n\ntype T interface{ interface{} }\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pass, its := checkedAt(t, "go1.26", declaration, tc.source)
+			assert.Equal(t, tc.spelt, isEmptyInterface(pass, its[1]))
+		})
+	}
+}
+
+// TestTheVerdictDoesNotDependOnWhatAnEmbeddedNameResolvesTo is the two-platform
+// pin, written as an assertion about the DECISION rather than about the inputs,
+// because a test binary runs on one GOOS and the input it would have to vary is
+// which file the build selected. The two passes below are the two platforms: one
+// where the embedded name denotes the empty interface and one where it carries a
+// method. The judged file is byte-identical in both and its verdict must be too
+// — otherwise a finding recorded on one machine is absent on another, and the
+// remedy taken on the first breaks the build on the second.
+func TestTheVerdictDoesNotDependOnWhatAnEmbeddedNameResolvesTo(t *testing.T) {
+	t.Parallel()
+	const judged = "package p\n\ntype X interface {\n\tplat\n}\n"
+
+	empty, its := checkedAt(t, "go1.26", "package p\n\ntype plat interface{}\n", judged)
+	assert.False(t, isEmptyInterface(empty, its[1]), "the platform where the name is empty")
+
+	carrying, its := checkedAt(t, "go1.26", "package p\n\ntype plat interface{ Do() }\n", judged)
+	assert.False(t, isEmptyInterface(carrying, its[1]), "the platform where the name carries a method")
+}
+
 // TestAnUntypedInterfaceIsNotReported names what the matcher does when the type
 // checker recorded nothing for the expression. Absent type information says
 // nothing about emptiness, and reporting on that absence would report every
